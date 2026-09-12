@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>MindAR — AR по маркеру</title>
+
+  <!-- 1. A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+  <!-- 2. MindAR для A-Frame -->
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; }
+    #hint {
+      position: fixed;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      font-size: 14px;
+      background: rgba(0,0,0,0.5);
+      padding: 8px 16px;
+      border-radius: 20px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="hint">Наведите камеру на маркер</div>
+
+  <!-- Основная AR-сцена -->
+  <a-scene
+    mindar-image="imageTargetSrc: targets.mind; uiScanning: no; uiLoading: no; uiError: no"
+    color-space="sRGB"
+    renderer="colorManagement: true, physicallyCorrectLights"
+    vr-mode-ui="enabled: false"
+    device-orientation-permission-ui="enabled: false">
+
+    <!-- Освещение: ambient + направленный свет -->
+    <a-entity light="type: ambient; intensity: 1.2"></a-entity>
+    <a-entity light="type: directional; intensity: 1.5; position: 1 2 1"></a-entity>
+
+    <!-- Камера -->
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- Якорь: сюда привяжется модель, когда маркер найден -->
+    <a-entity mindar-image-target="targetIndex: 0">
+
+      <!-- 3D-модель в формате .glb -->
+      <a-gltf-model
+        src="models/model.glb"
+        position="0 0 0"
+        scale="0.5 0.5 0.5"
+        rotation="0 0 0">
+      </a-gltf-model>
+
+    </a-entity>
+  </a-scene>
+
+</body>
+</html>
