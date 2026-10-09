@@ -1,1 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>WebXR — Hit Test AR</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #000; font-family: Arial, sans-serif; }
+    #info {
+      position: fixed; top: 12px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; color: #fff; font-size: 14px;
+      background: rgba(0,0,0,0.5); padding: 8px 16px; border-radius: 20px;
+      pointer-events: none; text-align: center;
+    }
+    #ar-button {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; padding: 14px 24px; border: none; border-radius: 24px;
+      background: #4285f4; color: #fff; font-size: 16px; cursor: pointer;
+    }
+    #ar-button:disabled { background: #666; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div id="info">Наведите камеру на поверхность и коснитесь экрана</div>
+  <button id="ar-button">Проверка поддержки AR...</button>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+    import { ARButton } from 'three/addons/webxr/ARButton.js';
+    const arButton = document.getElementById('ar-button');
+    const info = document.getElementById('info');
+    if (navigator.xr) {
+      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+        if (supported) {
+          arButton.textContent = 'Начать AR';
+          arButton.disabled = false;
+        } else {
+          arButton.textContent = 'AR не поддерживается';
+          info.textContent = 'Ваше устройство не поддерживает immersive-ar';
+        }
+      });
+    } else {
+      arButton.textContent = 'WebXR не поддерживается';
+      info.textContent = 'Откройте страницу в Chrome на Android';
+    }
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+    const ambientLight = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.5);
+    scene.add(ambientLight);
+    const ringGeometry = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
+    const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const reticle = new THREE.Mesh(ringGeometry, ringMaterial);
+    reticle.matrixAutoUpdate = false;
+    reticle.visible = false;
+    scene.add(reticle);
+    const boxGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
+    const boxMaterial = new THREE.MeshStandardMaterial({ color: 0xff6600 });
+    const cube = new THREE.Mesh(boxGeometry, boxMaterial);
+    cube.visible = false;
+    scene.add(cube);
+    let hitTestSource = null;
+    let hitTestSourceRequested = false;
+    let referenceSpace = null;
+    arButton.addEventListener('click', async () => {
+      if (!navigator.xr) return;
+      const session = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['hit-test'],
+        optionalFeatures: ['dom-overlay'],
+        domOverlay: { root: document.body }
+      });
+      renderer.xr.setReferenceSpaceType('local');
+      await renderer.xr.setSession(session);
+      referenceSpace = await session.requestReferenceSpace('local');
+      const viewerSpace = await session.requestReferenceSpace('viewer');
+      hitTestSource = await session.requestHitTestSource({ space: viewerSpace });
+      arButton.style.display = 'none';
+      info.textContent = 'Наведите на поверхность и тапните';
+      session.addEventListener('select', () => {
+        if (reticle.visible) {
+          cube.position.copy(reticle.position);
+          cube.quaternion.copy(reticle.quaternion);
+          cube.visible = true;
+        }
+      });
+      session.addEventListener('end', () => {
+        arButton.style.display = 'block';
+        hitTestSource = null;
+        hitTestSourceRequested = false;
+        referenceSpace = null;
+        reticle.visible = false;
+        cube.visible = false;
+      });
+    });
+    renderer.setAnimationLoop((timestamp, frame) => {
+      if (!frame) return;
+      if (referenceSpace) {
+        const pose = frame.getViewerPose(referenceSpace);
+        if (pose) {
+          const view = pose.views[0];
+          camera.matrix.fromArray(view.transform.matrix);
+          camera.matrix.decompose(camera.position, camera.quaternion, camera.scale);
+        }
+      }
+      if (hitTestSource) {
+        const hitTestResults = frame.getHitTestResults(hitTestSource);
+        if (hitTestResults.length > 0) {
+          const hit = hitTestResults[0];
+          const pose = hit.getPose(referenceSpace);
 
+          reticle.visible = true;
+          reticle.matrix.fromArray(pose.transform.matrix);
+        } else {
+          reticle.visible = false;
+        }
+      }
+      renderer.render(scene, camera);
+    });
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
