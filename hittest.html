@@ -84,7 +84,7 @@
 
     loader.load('models/cat.glb', (gltf) => {
       catModel = gltf.scene;
-      catModel.scale.set(1, 1, 1);
+      catModel.scale.set(0.33, 0.33, 0.33);
     }, undefined, (err) => {
       console.error('Ошибка загрузки модели:', err);
       info.textContent = 'Не удалось загрузить models/cat.glb';
@@ -115,6 +115,7 @@
       session.addEventListener('select', () => {
         if (reticle.visible && catModel) {
           const clone = catModel.clone(true);
+          clone.scale.set(0.33, 0.33, 0.33);
           clone.position.setFromMatrixPosition(reticle.matrix);
           clone.quaternion.setFromRotationMatrix(reticle.matrix);
           scene.add(clone);
