@@ -118,6 +118,7 @@
           clone.scale.set(0.33, 0.33, 0.33);
           clone.position.setFromMatrixPosition(reticle.matrix);
           clone.quaternion.setFromRotationMatrix(reticle.matrix);
+          clone.translateX(0.03);
           scene.add(clone);
         }
       });
