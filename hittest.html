@@ -36,6 +36,7 @@
 
   <script type="module">
     import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
     const arButton = document.getElementById('ar-button');
     const info = document.getElementById('info');
@@ -67,6 +68,10 @@
     const ambientLight = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1.5);
     scene.add(ambientLight);
 
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    dirLight.position.set(1, 2, 1);
+    scene.add(dirLight);
+
     const ringGeometry = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
     const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
     const reticle = new THREE.Mesh(ringGeometry, ringMaterial);
@@ -74,8 +79,16 @@
     reticle.visible = false;
     scene.add(reticle);
 
-    const boxGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
-    const boxMaterial = new THREE.MeshStandardMaterial({ color: 0xff6600 });
+    const loader = new GLTFLoader();
+    let catModel = null;
+
+    loader.load('models/cat.glb', (gltf) => {
+      catModel = gltf.scene;
+      catModel.scale.set(1, 1, 1);
+    }, undefined, (err) => {
+      console.error('Ошибка загрузки модели:', err);
+      info.textContent = 'Не удалось загрузить models/cat.glb';
+    });
 
     let hitTestSource = null;
     let referenceSpace = null;
@@ -100,11 +113,11 @@
       info.textContent = 'Наведите на поверхность и тапните';
 
       session.addEventListener('select', () => {
-        if (reticle.visible) {
-          const newCube = new THREE.Mesh(boxGeometry, boxMaterial);
-          newCube.position.setFromMatrixPosition(reticle.matrix);
-          newCube.quaternion.setFromRotationMatrix(reticle.matrix);
-          scene.add(newCube);
+        if (reticle.visible && catModel) {
+          const clone = catModel.clone(true);
+          clone.position.setFromMatrixPosition(reticle.matrix);
+          clone.quaternion.setFromRotationMatrix(reticle.matrix);
+          scene.add(clone);
         }
       });
 
@@ -116,7 +129,9 @@
 
         for (let i = scene.children.length - 1; i >= 0; i--) {
           const obj = scene.children[i];
-          if (obj.isMesh && obj !== reticle) scene.remove(obj);
+          if (obj !== reticle && obj !== ambientLight && obj !== dirLight && obj.isObject3D && obj.type === 'Group') {
+            scene.remove(obj);
+          }
         }
       });
     });
