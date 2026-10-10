@@ -76,9 +76,6 @@
 
     const boxGeometry = new THREE.BoxGeometry(0.05, 0.05, 0.05);
     const boxMaterial = new THREE.MeshStandardMaterial({ color: 0xff6600 });
-    const cube = new THREE.Mesh(boxGeometry, boxMaterial);
-    cube.visible = false;
-    scene.add(cube);
 
     let hitTestSource = null;
     let referenceSpace = null;
@@ -104,9 +101,10 @@
 
       session.addEventListener('select', () => {
         if (reticle.visible) {
-          cube.position.setFromMatrixPosition(reticle.matrix);
-          cube.quaternion.setFromRotationMatrix(reticle.matrix);
-          cube.visible = true;
+          const newCube = new THREE.Mesh(boxGeometry, boxMaterial);
+          newCube.position.setFromMatrixPosition(reticle.matrix);
+          newCube.quaternion.setFromRotationMatrix(reticle.matrix);
+          scene.add(newCube);
         }
       });
 
@@ -115,7 +113,11 @@
         hitTestSource = null;
         referenceSpace = null;
         reticle.visible = false;
-        cube.visible = false;
+
+        for (let i = scene.children.length - 1; i >= 0; i--) {
+          const obj = scene.children[i];
+          if (obj.isMesh && obj !== reticle) scene.remove(obj);
+        }
       });
     });
 
