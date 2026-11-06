@@ -29,13 +29,15 @@ if (pathParts.length > 1 && pathParts[1] !== '' && !window.location.hostname.inc
     baseUrl = '/' + pathParts[1]; 
 }
 
-// Настройки моделей. Если модель огромная, поменяйте scale на 0.05 или 0.01.
+// НАСТРОЙКИ МОДЕЛЕЙ
+// scale: размер
+// offset: сдвиг по осям X (вправо/влево), Y (вверх/вниз), Z (вперед/назад)
 const MODELS = {
-    '1': { path: baseUrl + '/models/model.glb', scale: 0.3 },
-    '2': { path: baseUrl + '/models/cat.glb', scale: 0.3 },
-    '3': { path: baseUrl + '/models/catbox.glb', scale: 0.3 },
-    '4': { path: baseUrl + '/models/toothless.glb', scale: 0.3 },
-    '5': { path: baseUrl + '/models/noodle.glb', scale: 0.3 }
+    '1': { path: baseUrl + '/models/model.glb', scale: 0.6, offset: { x: 0, y: 0, z: 0 } }, // Увеличена в 2 раза (было 0.3)
+    '2': { path: baseUrl + '/models/cat.glb', scale: 0.3, offset: { x: 0.1, y: -0.1, z: 0 } }, // Размер тот же, сдвинут вправо (x) и вниз (y)
+    '3': { path: baseUrl + '/models/catbox.glb', scale: 0.03, offset: { x: 0, y: 0, z: 0 } }, // Уменьшена в 10 раз
+    '4': { path: baseUrl + '/models/toothless.glb', scale: 0.03, offset: { x: 0, y: 0, z: 0 } }, // Уменьшена в 10 раз
+    '5': { path: baseUrl + '/models/noodle.glb', scale: 0.03, offset: { x: 0, y: 0, z: 0 } }  // Уменьшена в 10 раз
 };
 
 const HDRI_PATH = baseUrl + '/hdri/studio.hdr';
@@ -68,12 +70,27 @@ function loadModel(url) {
             resolve(modelCache[url].clone(true));
             return;
         }
-        // Модели грузятся ТОЛЬКО когда их выбирают
         gltfLoader.load(url, (gltf) => {
             modelCache[url] = gltf.scene;
             resolve(gltf.scene.clone(true));
         }, undefined, reject);
     });
+}
+
+// Функция для правильного применения позиции и смещения
+function applyModelTransform(model, matrix, modelData) {
+    model.scale.set(modelData.scale, modelData.scale, modelData.scale);
+    
+    // Ставим базовую позицию на маркер
+    model.position.setFromMatrixPosition(matrix);
+    model.quaternion.setFromRotationMatrix(matrix);
+    
+    // Применяем индивидуальный сдвиг (offset) относительно осей модели
+    if (modelData.offset) {
+        model.translateX(modelData.offset.x);
+        model.translateY(modelData.offset.y);
+        model.translateZ(modelData.offset.z);
+    }
 }
 
 // --- Логика UI ---
@@ -114,14 +131,27 @@ ui.bindModelChange(async (newValue) => {
 
     info.textContent = 'Загрузка модели...';
     
-    const oldPos = targetModel.position.clone();
+    // Запоминаем, куда смотрит текущая модель (её поворот), 
+    // чтобы новая не встала криво
     const oldQuat = targetModel.quaternion.clone();
+    const oldPos = targetModel.position.clone();
 
     try {
         const newModel = await loadModel(modelData.path);
+        
+        newModel.scale.set(modelData.scale, modelData.scale, modelData.scale);
+        
+        // Если модель меняется, мы ставим её в ту же позицию.
+        // Но так как у новой модели могут быть свои offset'ы, 
+        // мы применяем их относительно текущей позиции.
         newModel.position.copy(oldPos);
         newModel.quaternion.copy(oldQuat);
-        newModel.scale.set(modelData.scale, modelData.scale, modelData.scale);
+        
+        if (modelData.offset) {
+            newModel.translateX(modelData.offset.x);
+            newModel.translateY(modelData.offset.y);
+            newModel.translateZ(modelData.offset.z);
+        }
 
         scene.remove(targetModel);
         const index = activeModels.indexOf(targetModel);
@@ -178,10 +208,9 @@ arButton.addEventListener('click', async () => {
             
             info.textContent = 'Загрузка...';
             const model = await loadModel(modelData.path);
-            model.scale.set(modelData.scale, modelData.scale, modelData.scale); 
             
-            model.position.setFromMatrixPosition(reticle.matrix);
-            model.quaternion.setFromRotationMatrix(reticle.matrix);
+            // Применяем масштаб, поворот и смещение при первом появлении
+            applyModelTransform(model, reticle.matrix, modelData);
             
             scene.add(model);
             activeModels.push(model);
