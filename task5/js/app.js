@@ -106,9 +106,10 @@ if (navigator.xr) {
 arButton.addEventListener('click', async () => {
     if (!navigator.xr) return;
 
+    // ДОБАВЛЕНА ОПЦИЯ dom-overlay-for-handheld-ar для скрытия системных плашек
     const session = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['hit-test'],
-        optionalFeatures: ['dom-overlay'],
+        optionalFeatures: ['dom-overlay', 'dom-overlay-for-handheld-ar'],
         domOverlay: { root: document.body }
     });
 
