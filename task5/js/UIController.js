@@ -3,6 +3,7 @@ export class UIController {
         this.uiPanel = document.getElementById('ui-panel');
         this.btnRotate = document.getElementById('btn-rotate');
         this.btnColor = document.getElementById('btn-color');
+        this.btnClear = document.getElementById('btn-clear');
         this.selectModel = document.getElementById('select-model');
     }
 
@@ -20,6 +21,10 @@ export class UIController {
 
     bindColor(callback) {
         this.btnColor.addEventListener('click', callback);
+    }
+
+    bindClear(callback) {
+        this.btnClear.addEventListener('click', callback);
     }
 
     bindModelChange(callback) {
