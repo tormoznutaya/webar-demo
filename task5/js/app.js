@@ -22,15 +22,14 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// Вычисление базового URL для GitHub Pages
+// Вычисление пути
 const pathParts = window.location.pathname.split('/');
 let baseUrl = '';
 if (pathParts.length > 1 && pathParts[1] !== '' && !window.location.hostname.includes('localhost')) {
     baseUrl = '/' + pathParts[1]; 
 }
 
-// СЛОВАРЬ МОДЕЛЕЙ (id: путь, масштаб)
-// Меняйте scale, если модель слишком большая или маленькая!
+// Настройки моделей. Если модель огромная, поменяйте scale на 0.05 или 0.01.
 const MODELS = {
     '1': { path: baseUrl + '/models/model.glb', scale: 0.3 },
     '2': { path: baseUrl + '/models/cat.glb', scale: 0.3 },
@@ -45,7 +44,7 @@ const rgbeLoader = new RGBELoader();
 rgbeLoader.load(HDRI_PATH, (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = texture;
-}, undefined, () => showError('Ошибка загрузки HDRI'));
+}, undefined, () => console.log('HDRI не загрузился'));
 
 const ringGeometry = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
 const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -69,6 +68,7 @@ function loadModel(url) {
             resolve(modelCache[url].clone(true));
             return;
         }
+        // Модели грузятся ТОЛЬКО когда их выбирают
         gltfLoader.load(url, (gltf) => {
             modelCache[url] = gltf.scene;
             resolve(gltf.scene.clone(true));
@@ -86,10 +86,7 @@ ui.bindRotate(() => {
 
 ui.bindColor(() => {
     blockSpawn = true; setTimeout(() => blockSpawn = false, 500);
-    if (!targetModel) {
-        info.textContent = 'Сначала тапните по экрану, чтобы поставить модель';
-        return;
-    }
+    if (!targetModel) return;
     targetModel.traverse((child) => {
         if (child.isMesh && child.material.color) {
             child.material.color.setHex(Math.random() * 0xffffff);
@@ -97,29 +94,34 @@ ui.bindColor(() => {
     });
 });
 
+ui.bindClear(() => {
+    blockSpawn = true; setTimeout(() => blockSpawn = false, 500);
+    activeModels.forEach(m => scene.remove(m));
+    activeModels = [];
+    targetModel = null;
+    info.textContent = 'Сцена очищена';
+});
+
 ui.bindModelChange(async (newValue) => {
     blockSpawn = true; setTimeout(() => blockSpawn = false, 500);
     if (!targetModel) {
-        info.textContent = 'Сначала тапните по экрану, чтобы поставить модель';
+        info.textContent = 'Сначала тапните по экрану';
         return;
     }
 
     const modelData = MODELS[newValue];
     if (!modelData) return;
 
-    const fullUrl = modelData.path;
-    const newScale = modelData.scale;
-
+    info.textContent = 'Загрузка модели...';
+    
     const oldPos = targetModel.position.clone();
     const oldQuat = targetModel.quaternion.clone();
 
     try {
-        const newModel = await loadModel(fullUrl);
+        const newModel = await loadModel(modelData.path);
         newModel.position.copy(oldPos);
         newModel.quaternion.copy(oldQuat);
-        
-        // Применяем масштаб из словаря
-        newModel.scale.set(newScale, newScale, newScale);
+        newModel.scale.set(modelData.scale, modelData.scale, modelData.scale);
 
         scene.remove(targetModel);
         const index = activeModels.indexOf(targetModel);
@@ -128,8 +130,9 @@ ui.bindModelChange(async (newValue) => {
         scene.add(newModel);
         activeModels.push(newModel);
         targetModel = newModel; 
+        info.textContent = 'Модель заменена!';
     } catch(e) {
-        showError('Ошибка смены модели: ' + fullUrl);
+        showError('Ошибка загрузки. Файл слишком большой или отсутствует.');
     }
 });
 
@@ -163,7 +166,7 @@ arButton.addEventListener('click', async () => {
 
     arButton.style.display = 'none';
     ui.show();
-    info.textContent = 'Тапните по маркеру, чтобы поставить объект';
+    info.textContent = 'Наведите на пол';
 
     session.addEventListener('select', async () => {
         if (blockSpawn) return; 
@@ -172,11 +175,9 @@ arButton.addEventListener('click', async () => {
         try {
             const selectedValue = ui.getSelectedModel();
             const modelData = MODELS[selectedValue];
-            if (!modelData) return;
-
-            const model = await loadModel(modelData.path);
             
-            // Применяем масштаб из словаря при первичном спавне
+            info.textContent = 'Загрузка...';
+            const model = await loadModel(modelData.path);
             model.scale.set(modelData.scale, modelData.scale, modelData.scale); 
             
             model.position.setFromMatrixPosition(reticle.matrix);
@@ -188,7 +189,7 @@ arButton.addEventListener('click', async () => {
             
             info.textContent = 'Модель установлена!';
         } catch (e) {
-            showError('Не удалось загрузить модель');
+            showError('Не удалось загрузить модель (возможно, тяжелый файл)');
         }
     });
 
