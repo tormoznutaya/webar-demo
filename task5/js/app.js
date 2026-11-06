@@ -25,20 +25,14 @@ renderer.xr.enabled = true;
 document.body.appendChild(renderer.domElement);
 
 // --- УМНОЕ ВЫЧИСЛЕНИЕ ПУТЕЙ ---
-// Так как мы на GitHub Pages, путь может быть /имя-репозитория/
-// Находим базовый URL (корень репозитория)
 const pathParts = window.location.pathname.split('/');
-// Если мы на localhost, корень пустой, если на github - первый сегмент это имя репы
 let baseUrl = '';
 if (pathParts.length > 1 && pathParts[1] !== '' && !window.location.hostname.includes('localhost')) {
     baseUrl = '/' + pathParts[1]; 
 }
-
 const MODEL_PATH_1 = baseUrl + '/models/model.glb';
 const MODEL_PATH_2 = baseUrl + '/models/cat.glb';
 const HDRI_PATH = baseUrl + '/hdri/studio.hdr';
-
-console.log("Пути сформированы:", MODEL_PATH_1, HDRI_PATH);
 
 // --- Загрузка HDRI ---
 const rgbeLoader = new RGBELoader();
@@ -46,10 +40,10 @@ rgbeLoader.load(HDRI_PATH, (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = texture;
 }, undefined, (err) => {
-    showError('Ошибка загрузки HDRI по пути: ' + HDRI_PATH);
+    showError('Ошибка загрузки HDRI');
 });
 
-// --- Маркер и переменные ---
+// --- Маркер ---
 const ringGeometry = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
 const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const reticle = new THREE.Mesh(ringGeometry, ringMaterial);
@@ -60,9 +54,8 @@ scene.add(reticle);
 let hitTestSource = null;
 let referenceSpace = null;
 let activeModels = [];
-let targetModel = null;
+let targetModel = null; // Модель, которой сейчас управляем
 
-// --- Загрузчик моделей ---
 const gltfLoader = new GLTFLoader();
 const modelCache = {};
 
@@ -75,16 +68,26 @@ function loadModel(url) {
         gltfLoader.load(url, (gltf) => {
             modelCache[url] = gltf.scene;
             resolve(gltf.scene.clone(true));
-        }, undefined, (err) => {
-            showError('Не удалось загрузить модель: ' + url);
-            reject(err);
-        });
+        }, undefined, reject);
     });
 }
 
 // --- Логика UI ---
+
+// 1. Вращение
+let isRotating = false;
+ui.bindRotate(() => {
+    isRotating = !isRotating;
+    // Визуальная индикация (опционально)
+    document.getElementById('btn-rotate').style.background = isRotating ? '#ea4335' : '#4285f4';
+});
+
+// 2. Смена цвета
 ui.bindColor(() => {
-    if (!targetModel) return;
+    if (!targetModel) {
+        info.textContent = 'Сначала тапните по экрану, чтобы поставить модель';
+        return;
+    }
     targetModel.traverse((child) => {
         if (child.isMesh && child.material.color) {
             child.material.color.setHex(Math.random() * 0xffffff);
@@ -92,26 +95,39 @@ ui.bindColor(() => {
     });
 });
 
-let isRotating = false;
-let rotationSpeed = 0;
-ui.bindRotate(() => {
-    isRotating = !isRotating;
-    rotationSpeed = isRotating ? 0.02 : 0;
-});
+// 3. Замена модели
+ui.bindModelChange(async (newValue) => {
+    if (!targetModel) {
+        info.textContent = 'Сначала тапните по экрану, чтобы поставить модель';
+        return;
+    }
 
-ui.bindModelChange(async (newUrl) => {
-    if (!targetModel) return;
-    const fullUrl = newUrl.includes('model.glb') ? MODEL_PATH_1 : MODEL_PATH_2;
+    // Определяем, какую модель грузить
+    const fullUrl = (newValue === 'model1') ? MODEL_PATH_1 : MODEL_PATH_2;
+
+    // Запоминаем позицию старой модели
+    const oldPos = targetModel.position.clone();
+    const oldQuat = targetModel.quaternion.clone();
+    const oldScale = targetModel.scale.clone();
+
     try {
         const newModel = await loadModel(fullUrl);
-        newModel.position.copy(targetModel.position);
-        newModel.quaternion.copy(targetModel.quaternion);
-        newModel.scale.copy(targetModel.scale);
-        
+        newModel.position.copy(oldPos);
+        newModel.quaternion.copy(oldQuat);
+        newModel.scale.copy(oldScale);
+
+        // Удаляем старую
         scene.remove(targetModel);
+        const index = activeModels.indexOf(targetModel);
+        if (index > -1) activeModels.splice(index, 1);
+
+        // Добавляем новую
         scene.add(newModel);
-        targetModel = newModel;
-    } catch(e) {}
+        activeModels.push(newModel);
+        targetModel = newModel; // Переключаем управление на новую
+    } catch(e) {
+        showError('Ошибка смены модели');
+    }
 });
 
 // --- WebXR ---
@@ -146,12 +162,21 @@ arButton.addEventListener('click', async () => {
     ui.show();
     info.textContent = 'Тапните по маркеру, чтобы поставить объект';
 
-    session.addEventListener('select', async () => {
+    // Обработка тапа по экрану
+    session.addEventListener('select', async (e) => {
+        // Защита: если тап пришелся по кнопке или селекту — игнорируем
+        if (e.target && (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION')) {
+            return;
+        }
+
         if (!reticle.visible) return;
 
         try {
-            const model = await loadModel(MODEL_PATH_1);
-            model.scale.set(0.3, 0.3, 0.3);
+            const selectedValue = ui.getSelectedModel();
+            const urlToLoad = (selectedValue === 'model1') ? MODEL_PATH_1 : MODEL_PATH_2;
+            
+            const model = await loadModel(urlToLoad);
+            model.scale.set(0.3, 0.3, 0.3); 
             
             model.position.setFromMatrixPosition(reticle.matrix);
             model.quaternion.setFromRotationMatrix(reticle.matrix);
@@ -161,7 +186,9 @@ arButton.addEventListener('click', async () => {
             targetModel = model;
             
             info.textContent = 'Модель установлена!';
-        } catch (e) {}
+        } catch (e) {
+            console.error(e);
+        }
     });
 
     session.addEventListener('end', () => {
@@ -171,6 +198,10 @@ arButton.addEventListener('click', async () => {
         referenceSpace = null;
         reticle.visible = false;
         targetModel = null;
+        isRotating = false;
+        
+        // Сброс цвета кнопки вращения
+        document.getElementById('btn-rotate').style.background = '#4285f4';
         
         activeModels.forEach(m => scene.remove(m));
         activeModels = [];
@@ -203,7 +234,7 @@ renderer.setAnimationLoop((timestamp, frame) => {
     }
 
     if (isRotating && targetModel) {
-        targetModel.rotation.y += rotationSpeed;
+        targetModel.rotation.y += 0.02;
     }
 
     renderer.render(scene, camera);
