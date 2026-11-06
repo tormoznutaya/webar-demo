@@ -11,18 +11,12 @@
       position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
       z-index: 1000; display: flex; gap: 10px; align-items: center;
       background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 30px;
-      backdrop-filter: blur(5px); 
-      display: none; 
-      
-      /* Защита контейнера от перехвата кликов */
-      pointer-events: none;
+      backdrop-filter: blur(5px); display: none; pointer-events: none;
     }
     
     #ui-panel button, #ui-panel select {
       padding: 10px 15px; border: none; border-radius: 20px;
       background: #4285f4; color: #fff; font-size: 14px; cursor: pointer;
-      
-      /* Кнопки должны быть кликабельными */
       pointer-events: auto; 
     }
     #ui-panel button:hover { background: #3367d6; }
@@ -44,8 +38,7 @@
     #error-log {
       position: fixed; top: 100px; left: 50%; transform: translateX(-50%);
       z-index: 2000; color: #fff; background: rgba(200, 0, 0, 0.9);
-      padding: 10px; border-radius: 10px; font-size: 12px; 
-      display: none; max-width: 90%; text-align: center;
+      padding: 10px; border-radius: 10px; font-size: 12px; display: none; max-width: 90%; text-align: center;
     }
   </style>
 </head>
@@ -59,8 +52,8 @@
     <button id="btn-rotate">Вращать</button>
     <button id="btn-color">Сменить цвет</button>
     <select id="select-model">
-      <option value="model1">Модель 1 (Астронавт)</option>
-      <option value="model2">Модель 2 (Кот)</option>
+      <option value="1">Модель 1</option>
+      <option value="2">Модель 2 (Кот)</option>
     </select>
   </div>
 
