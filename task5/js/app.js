@@ -3,7 +3,6 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 import { UIController } from './UIController.js';
 
-// --- Инициализация UI и логов ---
 const ui = new UIController();
 const arButton = document.getElementById('ar-button');
 const info = document.getElementById('info');
@@ -15,7 +14,6 @@ function showError(msg) {
     errorLog.textContent = msg;
 }
 
-// --- Настройка сцены ---
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 100);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -24,7 +22,6 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// --- УМНОЕ ВЫЧИСЛЕНИЕ ПУТЕЙ ---
 const pathParts = window.location.pathname.split('/');
 let baseUrl = '';
 if (pathParts.length > 1 && pathParts[1] !== '' && !window.location.hostname.includes('localhost')) {
@@ -34,16 +31,12 @@ const MODEL_PATH_1 = baseUrl + '/models/model.glb';
 const MODEL_PATH_2 = baseUrl + '/models/cat.glb';
 const HDRI_PATH = baseUrl + '/hdri/studio.hdr';
 
-// --- Загрузка HDRI ---
 const rgbeLoader = new RGBELoader();
 rgbeLoader.load(HDRI_PATH, (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = texture;
-}, undefined, (err) => {
-    showError('Ошибка загрузки HDRI');
-});
+}, undefined, () => showError('Ошибка загрузки HDRI'));
 
-// --- Маркер ---
 const ringGeometry = new THREE.RingGeometry(0.08, 0.1, 32).rotateX(-Math.PI / 2);
 const ringMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff });
 const reticle = new THREE.Mesh(ringGeometry, ringMaterial);
@@ -54,7 +47,10 @@ scene.add(reticle);
 let hitTestSource = null;
 let referenceSpace = null;
 let activeModels = [];
-let targetModel = null; // Модель, которой сейчас управляем
+let targetModel = null; 
+
+// Переменная-заглушка для блокировки кликов
+let blockSpawn = false; 
 
 const gltfLoader = new GLTFLoader();
 const modelCache = {};
@@ -73,17 +69,15 @@ function loadModel(url) {
 }
 
 // --- Логика UI ---
-
-// 1. Вращение
 let isRotating = false;
 ui.bindRotate(() => {
+    blockSpawn = true; setTimeout(() => blockSpawn = false, 500); // Блокируем спавн на 0.5 сек
     isRotating = !isRotating;
-    // Визуальная индикация (опционально)
     document.getElementById('btn-rotate').style.background = isRotating ? '#ea4335' : '#4285f4';
 });
 
-// 2. Смена цвета
 ui.bindColor(() => {
+    blockSpawn = true; setTimeout(() => blockSpawn = false, 500); // Блокируем спавн
     if (!targetModel) {
         info.textContent = 'Сначала тапните по экрану, чтобы поставить модель';
         return;
@@ -95,17 +89,14 @@ ui.bindColor(() => {
     });
 });
 
-// 3. Замена модели
 ui.bindModelChange(async (newValue) => {
+    blockSpawn = true; setTimeout(() => blockSpawn = false, 500); // Блокируем спавн
     if (!targetModel) {
         info.textContent = 'Сначала тапните по экрану, чтобы поставить модель';
         return;
     }
 
-    // Определяем, какую модель грузить
-    const fullUrl = (newValue === 'model1') ? MODEL_PATH_1 : MODEL_PATH_2;
-
-    // Запоминаем позицию старой модели
+    const fullUrl = (newValue === '1') ? MODEL_PATH_1 : MODEL_PATH_2;
     const oldPos = targetModel.position.clone();
     const oldQuat = targetModel.quaternion.clone();
     const oldScale = targetModel.scale.clone();
@@ -116,15 +107,13 @@ ui.bindModelChange(async (newValue) => {
         newModel.quaternion.copy(oldQuat);
         newModel.scale.copy(oldScale);
 
-        // Удаляем старую
         scene.remove(targetModel);
         const index = activeModels.indexOf(targetModel);
         if (index > -1) activeModels.splice(index, 1);
 
-        // Добавляем новую
         scene.add(newModel);
         activeModels.push(newModel);
-        targetModel = newModel; // Переключаем управление на новую
+        targetModel = newModel; 
     } catch(e) {
         showError('Ошибка смены модели');
     }
@@ -162,18 +151,14 @@ arButton.addEventListener('click', async () => {
     ui.show();
     info.textContent = 'Тапните по маркеру, чтобы поставить объект';
 
-    // Обработка тапа по экрану
-    session.addEventListener('select', async (e) => {
-        // Защита: если тап пришелся по кнопке или селекту — игнорируем
-        if (e.target && (e.target.tagName === 'BUTTON' || e.target.tagName === 'SELECT' || e.target.tagName === 'OPTION')) {
-            return;
-        }
-
+    session.addEventListener('select', async () => {
+        // Если недавно нажимали кнопку — ничего не делаем
+        if (blockSpawn) return; 
         if (!reticle.visible) return;
 
         try {
             const selectedValue = ui.getSelectedModel();
-            const urlToLoad = (selectedValue === 'model1') ? MODEL_PATH_1 : MODEL_PATH_2;
+            const urlToLoad = (selectedValue === '1') ? MODEL_PATH_1 : MODEL_PATH_2;
             
             const model = await loadModel(urlToLoad);
             model.scale.set(0.3, 0.3, 0.3); 
@@ -199,8 +184,6 @@ arButton.addEventListener('click', async () => {
         reticle.visible = false;
         targetModel = null;
         isRotating = false;
-        
-        // Сброс цвета кнопки вращения
         document.getElementById('btn-rotate').style.background = '#4285f4';
         
         activeModels.forEach(m => scene.remove(m));
