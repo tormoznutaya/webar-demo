@@ -24,13 +24,29 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 document.body.appendChild(renderer.domElement);
 
+// --- УМНОЕ ВЫЧИСЛЕНИЕ ПУТЕЙ ---
+// Так как мы на GitHub Pages, путь может быть /имя-репозитория/
+// Находим базовый URL (корень репозитория)
+const pathParts = window.location.pathname.split('/');
+// Если мы на localhost, корень пустой, если на github - первый сегмент это имя репы
+let baseUrl = '';
+if (pathParts.length > 1 && pathParts[1] !== '' && !window.location.hostname.includes('localhost')) {
+    baseUrl = '/' + pathParts[1]; 
+}
+
+const MODEL_PATH_1 = baseUrl + '/models/model.glb';
+const MODEL_PATH_2 = baseUrl + '/models/cat.glb';
+const HDRI_PATH = baseUrl + '/hdri/studio.hdr';
+
+console.log("Пути сформированы:", MODEL_PATH_1, HDRI_PATH);
+
 // --- Загрузка HDRI ---
 const rgbeLoader = new RGBELoader();
-rgbeLoader.load('../hdri/studio.hdr', (texture) => {
+rgbeLoader.load(HDRI_PATH, (texture) => {
     texture.mapping = THREE.EquirectangularReflectionMapping;
     scene.environment = texture;
 }, undefined, (err) => {
-    showError('Ошибка загрузки HDRI (проверьте путь к studio.hdr)');
+    showError('Ошибка загрузки HDRI по пути: ' + HDRI_PATH);
 });
 
 // --- Маркер и переменные ---
@@ -49,12 +65,6 @@ let targetModel = null;
 // --- Загрузчик моделей ---
 const gltfLoader = new GLTFLoader();
 const modelCache = {};
-
-// Обратите внимание: пути к моделям теперь БЕЗ ../../ 
-// Файл лежит в task5/js/, а сервер раздает всё от корня. 
-// Но чтобы не путаться, мы используем абсолютный путь от корня репозитория:
-const MODEL_PATH_1 = '/models/model.glb';
-const MODEL_PATH_2 = '/models/cat.glb';
 
 function loadModel(url) {
     return new Promise((resolve, reject) => {
@@ -91,7 +101,6 @@ ui.bindRotate(() => {
 
 ui.bindModelChange(async (newUrl) => {
     if (!targetModel) return;
-    // Меняем путь на абсолютный
     const fullUrl = newUrl.includes('model.glb') ? MODEL_PATH_1 : MODEL_PATH_2;
     try {
         const newModel = await loadModel(fullUrl);
@@ -138,14 +147,8 @@ arButton.addEventListener('click', async () => {
     info.textContent = 'Тапните по маркеру, чтобы поставить объект';
 
     session.addEventListener('select', async () => {
-        console.log("Произошел тап (select)!");
-        
-        if (!reticle.visible) {
-            console.log("Тап проигнорирован: маркер (reticle) не виден");
-            return;
-        }
+        if (!reticle.visible) return;
 
-        // Загружаем модель по умолчанию (первую)
         try {
             const model = await loadModel(MODEL_PATH_1);
             model.scale.set(0.3, 0.3, 0.3);
@@ -157,11 +160,8 @@ arButton.addEventListener('click', async () => {
             activeModels.push(model);
             targetModel = model;
             
-            console.log("Модель успешно добавлена!");
             info.textContent = 'Модель установлена!';
-        } catch (e) {
-            console.log("Ошибка при загрузке модели во время тапа", e);
-        }
+        } catch (e) {}
     });
 
     session.addEventListener('end', () => {
