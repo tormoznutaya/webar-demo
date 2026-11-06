@@ -5,50 +5,50 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>WebXR — Task 5 (UI + PBR + HDRI)</title>
   <style>
-  body { margin: 0; overflow: hidden; background: #000; font-family: Arial, sans-serif; }
-  
-  /* UI-панель */
-  #ui-panel {
-    position: fixed; 
-    bottom: 80px; /* Подняли выше, чтобы не мешала системная навигация */
-    left: 50%; transform: translateX(-50%);
-    z-index: 1000; display: flex; gap: 10px; align-items: center;
-    background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 30px;
-    backdrop-filter: blur(5px);
-    display: none; /* Скрыто до запуска AR */
-  }
-  
-  /* Кнопки UI */
-  #ui-panel button, #ui-panel select {
-    padding: 10px 15px; border: none; border-radius: 20px;
-    background: #4285f4; color: #fff; font-size: 14px; cursor: pointer;
-  }
-  #ui-panel button:hover { background: #3367d6; }
-  #ui-panel select { background: #34a853; }
+    body { margin: 0; overflow: hidden; background: #000; font-family: Arial, sans-serif; }
+    
+    #ui-panel {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; display: flex; gap: 10px; align-items: center;
+      background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 30px;
+      backdrop-filter: blur(5px); display: none;
+    }
+    
+    #ui-panel button, #ui-panel select {
+      padding: 10px 15px; border: none; border-radius: 20px;
+      background: #4285f4; color: #fff; font-size: 14px; cursor: pointer;
+    }
+    #ui-panel button:hover { background: #3367d6; }
+    #ui-panel select { background: #34a853; }
 
-  #ar-button {
-    position: fixed; 
-    bottom: 80px; /* Тоже подняли */
-    left: 50%; transform: translateX(-50%);
-    z-index: 1000; padding: 14px 24px; border: none; border-radius: 24px;
-    background: #ea4335; color: #fff; font-size: 16px; cursor: pointer;
-  }
+    #ar-button {
+      position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; padding: 14px 24px; border: none; border-radius: 24px;
+      background: #ea4335; color: #fff; font-size: 16px; cursor: pointer;
+    }
 
-  #info {
-    position: fixed; top: 40px; /* Опустили сверху, чтобы не залезать на камеру телефона */
-    left: 50%; transform: translateX(-50%);
-    z-index: 1000; color: #fff; font-size: 14px; background: rgba(0,0,0,0.7);
-    padding: 8px 16px; border-radius: 20px; pointer-events: none; text-align: center;
-    max-width: 80%;
-  }
+    #info {
+      position: fixed; top: 40px; left: 50%; transform: translateX(-50%);
+      z-index: 1000; color: #fff; font-size: 14px; background: rgba(0,0,0,0.7);
+      padding: 8px 16px; border-radius: 20px; pointer-events: none; text-align: center;
+      max-width: 80%;
+    }
+
+    /* Блок для вывода ошибок на экран */
+    #error-log {
+      position: fixed; top: 100px; left: 50%; transform: translateX(-50%);
+      z-index: 2000; color: #fff; background: rgba(200, 0, 0, 0.9);
+      padding: 10px; border-radius: 10px; font-size: 12px; 
+      display: none; max-width: 90%; text-align: center;
+    }
   </style>
 </head>
 <body>
 
-  <div id="info">Наведите на поверхность, тапните для установки, затем управляйте объектом</div>
+  <div id="info">Наведите на поверхность, тапните для установки</div>
+  <div id="error-log"></div>
   <button id="ar-button" disabled>Проверка AR...</button>
 
-  <!-- Панель управления, которая появится в AR -->
   <div id="ui-panel">
     <button id="btn-rotate">Вращать</button>
     <button id="btn-color">Сменить цвет</button>
@@ -58,7 +58,6 @@
     </select>
   </div>
 
-  <!-- Подключение модулей Three.js -->
   <script type="importmap">
     {
       "imports": {
@@ -68,7 +67,6 @@
     }
   </script>
 
-  <!-- Наш основной скрипт -->
   <script type="module" src="./js/app.js"></script>
 
 </body>
