@@ -22,13 +22,23 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.xr.enabled = true;
 document.body.appendChild(renderer.domElement);
 
+// Вычисление базового URL для GitHub Pages
 const pathParts = window.location.pathname.split('/');
 let baseUrl = '';
 if (pathParts.length > 1 && pathParts[1] !== '' && !window.location.hostname.includes('localhost')) {
     baseUrl = '/' + pathParts[1]; 
 }
-const MODEL_PATH_1 = baseUrl + '/models/model.glb';
-const MODEL_PATH_2 = baseUrl + '/models/cat.glb';
+
+// СЛОВАРЬ МОДЕЛЕЙ (id: путь, масштаб)
+// Меняйте scale, если модель слишком большая или маленькая!
+const MODELS = {
+    '1': { path: baseUrl + '/models/model.glb', scale: 0.3 },
+    '2': { path: baseUrl + '/models/cat.glb', scale: 0.3 },
+    '3': { path: baseUrl + '/models/catbox.glb', scale: 0.3 },
+    '4': { path: baseUrl + '/models/toothless.glb', scale: 0.3 },
+    '5': { path: baseUrl + '/models/noodle.glb', scale: 0.3 }
+};
+
 const HDRI_PATH = baseUrl + '/hdri/studio.hdr';
 
 const rgbeLoader = new RGBELoader();
@@ -48,8 +58,6 @@ let hitTestSource = null;
 let referenceSpace = null;
 let activeModels = [];
 let targetModel = null; 
-
-// Переменная-заглушка для блокировки кликов
 let blockSpawn = false; 
 
 const gltfLoader = new GLTFLoader();
@@ -71,13 +79,13 @@ function loadModel(url) {
 // --- Логика UI ---
 let isRotating = false;
 ui.bindRotate(() => {
-    blockSpawn = true; setTimeout(() => blockSpawn = false, 500); // Блокируем спавн на 0.5 сек
+    blockSpawn = true; setTimeout(() => blockSpawn = false, 500);
     isRotating = !isRotating;
     document.getElementById('btn-rotate').style.background = isRotating ? '#ea4335' : '#4285f4';
 });
 
 ui.bindColor(() => {
-    blockSpawn = true; setTimeout(() => blockSpawn = false, 500); // Блокируем спавн
+    blockSpawn = true; setTimeout(() => blockSpawn = false, 500);
     if (!targetModel) {
         info.textContent = 'Сначала тапните по экрану, чтобы поставить модель';
         return;
@@ -90,22 +98,28 @@ ui.bindColor(() => {
 });
 
 ui.bindModelChange(async (newValue) => {
-    blockSpawn = true; setTimeout(() => blockSpawn = false, 500); // Блокируем спавн
+    blockSpawn = true; setTimeout(() => blockSpawn = false, 500);
     if (!targetModel) {
         info.textContent = 'Сначала тапните по экрану, чтобы поставить модель';
         return;
     }
 
-    const fullUrl = (newValue === '1') ? MODEL_PATH_1 : MODEL_PATH_2;
+    const modelData = MODELS[newValue];
+    if (!modelData) return;
+
+    const fullUrl = modelData.path;
+    const newScale = modelData.scale;
+
     const oldPos = targetModel.position.clone();
     const oldQuat = targetModel.quaternion.clone();
-    const oldScale = targetModel.scale.clone();
 
     try {
         const newModel = await loadModel(fullUrl);
         newModel.position.copy(oldPos);
         newModel.quaternion.copy(oldQuat);
-        newModel.scale.copy(oldScale);
+        
+        // Применяем масштаб из словаря
+        newModel.scale.set(newScale, newScale, newScale);
 
         scene.remove(targetModel);
         const index = activeModels.indexOf(targetModel);
@@ -115,7 +129,7 @@ ui.bindModelChange(async (newValue) => {
         activeModels.push(newModel);
         targetModel = newModel; 
     } catch(e) {
-        showError('Ошибка смены модели');
+        showError('Ошибка смены модели: ' + fullUrl);
     }
 });
 
@@ -152,16 +166,18 @@ arButton.addEventListener('click', async () => {
     info.textContent = 'Тапните по маркеру, чтобы поставить объект';
 
     session.addEventListener('select', async () => {
-        // Если недавно нажимали кнопку — ничего не делаем
         if (blockSpawn) return; 
         if (!reticle.visible) return;
 
         try {
             const selectedValue = ui.getSelectedModel();
-            const urlToLoad = (selectedValue === '1') ? MODEL_PATH_1 : MODEL_PATH_2;
+            const modelData = MODELS[selectedValue];
+            if (!modelData) return;
+
+            const model = await loadModel(modelData.path);
             
-            const model = await loadModel(urlToLoad);
-            model.scale.set(0.3, 0.3, 0.3); 
+            // Применяем масштаб из словаря при первичном спавне
+            model.scale.set(modelData.scale, modelData.scale, modelData.scale); 
             
             model.position.setFromMatrixPosition(reticle.matrix);
             model.quaternion.setFromRotationMatrix(reticle.matrix);
@@ -172,7 +188,7 @@ arButton.addEventListener('click', async () => {
             
             info.textContent = 'Модель установлена!';
         } catch (e) {
-            console.error(e);
+            showError('Не удалось загрузить модель');
         }
     });
 
