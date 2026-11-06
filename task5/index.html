@@ -12,7 +12,7 @@
       z-index: 1000; display: flex; gap: 10px; align-items: center;
       background: rgba(0,0,0,0.85); padding: 10px 20px; border-radius: 30px;
       backdrop-filter: blur(5px); display: none; pointer-events: none;
-      flex-wrap: wrap; justify-content: center; /* Чтобы кнопки не вылезали за экран */
+      flex-wrap: wrap; justify-content: center;
       width: 90%; max-width: 400px;
     }
     
@@ -23,6 +23,7 @@
     }
     #ui-panel button:hover { background: #3367d6; }
     #ui-panel select { background: #34a853; max-width: 100%; }
+    #btn-clear { background: #ea4335; }
 
     #ar-button {
       position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
@@ -52,7 +53,8 @@
 
   <div id="ui-panel">
     <button id="btn-rotate">Вращать</button>
-    <button id="btn-color">Сменить цвет</button>
+    <button id="btn-color">Цвет</button>
+    <button id="btn-clear">Очистить</button>
     <select id="select-model">
       <option value="1">Модель 1 (Старая)</option>
       <option value="2">Модель 2 (Кот)</option>
