@@ -33,20 +33,20 @@ if (pathParts.length > 1 && pathParts[1] !== '' && !window.location.hostname.inc
 // scale: размер модели
 // offset: x (вправо/влево), y (вверх/вниз), z (вперед/назад)
 const MODELS = {
-    // Первая модель (было 0.6, z: 0.1). Двигаем вперед еще сильнее (z: 0.5)
-    '1': { path: baseUrl + '/models/model.glb', scale: 0.6, offset: { x: 0, y: 0, z: 0.5 } }, 
+    // Первая модель: сильно вперед (z: 1.5)
+    '1': { path: baseUrl + '/models/model.glb', scale: 0.6, offset: { x: 0, y: 0, z: 1.5 } }, 
     
     // Кот без изменений
     '2': { path: baseUrl + '/models/cat.glb', scale: 0.3, offset: { x: 0.1, y: -0.1, z: 0 } }, 
     
-    // Catbox (было 0.15, уменьшаем в 5 раз -> 0.03)
-    '3': { path: baseUrl + '/models/catbox.glb', scale: 0.03, offset: { x: 0, y: 0, z: 0 } }, 
+    // Catbox: меньше в 3 раза (было 0.03 -> стало 0.01)
+    '3': { path: baseUrl + '/models/catbox.glb', scale: 0.01, offset: { x: 0, y: 0, z: 0 } }, 
     
-    // Toothless. Уменьшаем до 0.01 и сдвигаем вперед на 1 метр (z: 1.0), чтобы вытащить из камеры
-    '4': { path: baseUrl + '/models/toothless.glb', scale: 0.01, offset: { x: 0, y: 0, z: 1.0 } }, 
+    // Toothless: меньше в 5 раз (было 0.01 -> стало 0.002) + оставляем сдвиг z: 1.0
+    '4': { path: baseUrl + '/models/toothless.glb', scale: 0.002, offset: { x: 0, y: 0, z: 1.0 } }, 
     
-    // Noodle (было 0.1, уменьшаем в 3 раза -> 0.03)
-    '5': { path: baseUrl + '/models/noodle.glb', scale: 0.03, offset: { x: 0, y: 0, z: 0 } }  
+    // Noodle: меньше в 2 раза (было 0.03 -> стало 0.015)
+    '5': { path: baseUrl + '/models/noodle.glb', scale: 0.015, offset: { x: 0, y: 0, z: 0 } }  
 };
 
 const HDRI_PATH = baseUrl + '/hdri/studio.hdr';
