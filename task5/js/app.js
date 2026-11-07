@@ -29,23 +29,15 @@ if (pathParts.length > 1 && pathParts[1] !== '' && !window.location.hostname.inc
     baseUrl = '/' + pathParts[1]; 
 }
 
-// НАСТРОЙКИ МОДЕЛЕЙ
-// scale: размер модели
-// offset: x (вправо/влево), y (вверх/вниз), z (вперед/назад)
+// НАСТРОЙКИ МОДЕЛЕЙ (остались только 3)
 const MODELS = {
-    // Первая модель: сильно вперед (z: 1.5)
-    '1': { path: baseUrl + '/models/model.glb', scale: 0.6, offset: { x: 0, y: 0, z: 1.5 } }, 
-    
     // Кот без изменений
     '2': { path: baseUrl + '/models/cat.glb', scale: 0.3, offset: { x: 0.1, y: -0.1, z: 0 } }, 
     
-    // Catbox: меньше в 3 раза (было 0.03 -> стало 0.01)
+    // Catbox: меньше в 3 раза (0.01)
     '3': { path: baseUrl + '/models/catbox.glb', scale: 0.01, offset: { x: 0, y: 0, z: 0 } }, 
     
-    // Toothless: меньше в 5 раз (было 0.01 -> стало 0.002) + оставляем сдвиг z: 1.0
-    '4': { path: baseUrl + '/models/toothless.glb', scale: 0.002, offset: { x: 0, y: 0, z: 1.0 } }, 
-    
-    // Noodle: меньше в 2 раза (было 0.03 -> стало 0.015)
+    // Noodle: меньше в 2 раза (0.015)
     '5': { path: baseUrl + '/models/noodle.glb', scale: 0.015, offset: { x: 0, y: 0, z: 0 } }  
 };
 
